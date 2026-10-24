@@ -14,6 +14,7 @@ class UAbilitySystemComponent;
 class UAttributeSet;
 class UChronoAbilitySystemComponent;
 class UChronoAttributeSet;
+class UTemporalBufferComponent;
 class UGameplayAbility;
 class UGameplayEffect;
 class USpringArmComponent;
@@ -82,6 +83,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Abilities")
 	TArray<TSubclassOf<UGameplayAbility>> StartupAbilities;
+
+	UPROPERTY(VisibleAnywhere, Category="Chrono Recall")
+	TObjectPtr<UTemporalBufferComponent> TemporalBuffer;
 
 private:
 

@@ -13,6 +13,7 @@
 
 #include "AbilitySystem/ChronoAbilitySystemComponent.h"
 #include "AbilitySystem/ChronoAttributeSet.h"
+#include "TemporalBufferComponent.h"
 #include "GameplayTagContainer.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
@@ -61,6 +62,8 @@ AChronoGASCharacter::AChronoGASCharacter()
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
 
 	AttributeSet = CreateDefaultSubobject<UChronoAttributeSet>("AttributeSet");
+
+	TemporalBuffer = CreateDefaultSubobject<UTemporalBufferComponent>("TemporalBuffer");
 }
 
 void AChronoGASCharacter::PossessedBy(AController* NewController)
@@ -131,7 +134,7 @@ void AChronoGASCharacter::InitAbilityActorInfo(const FString& CallerName)
 	Message.Append(AbilitySystemComponent->AbilityActorInfo->PlayerController.IsValid() ? FString(TEXT("Valid")) : FString(TEXT("Not Valid")));
 	Message.Append(FString(TEXT(" || Local ")));
 	Message.Append(AbilitySystemComponent->AbilityActorInfo->IsLocallyControlled() ? FString(TEXT("Yes")) : FString(TEXT("No")));
-	UKismetSystemLibrary::PrintString(this, Message, true, true, FLinearColor::Blue, 10.f);
+	// UKismetSystemLibrary::PrintString(this, Message, true, true, FLinearColor::Blue, 10.f);
 }
 
 void AChronoGASCharacter::GrantStartupAbilities()
