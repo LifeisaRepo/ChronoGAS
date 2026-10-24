@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright (c) 2026 Sanjyot Dahale. All rights reserved.
 
 #include "ChronoGAS.h"
 #include "Modules/ModuleManager.h"

@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright (c) 2026 Sanjyot Dahale. All rights reserved.
 
 #include "ChronoGASCharacter.h"
 #include "Engine/LocalPlayer.h"
@@ -10,6 +10,12 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
+
+#include "AbilitySystem/ChronoAbilitySystemComponent.h"
+#include "AbilitySystem/ChronoAttributeSet.h"
+#include "GameplayTagContainer.h"
+#include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 DEFINE_LOG_CATEGORY(LogTemplateCharacter);
 
@@ -50,14 +56,42 @@ AChronoGASCharacter::AChronoGASCharacter()
 	FollowCamera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName); // Attach the camera to the end of the boom and let the boom adjust to match the controller orientation
 	FollowCamera->bUsePawnControlRotation = false; // Camera does not rotate relative to arm
 
-	// Note: The skeletal mesh and anim blueprint references on the Mesh component (inherited from Character) 
-	// are set in the derived blueprint asset named ThirdPersonCharacter (to avoid direct content references in C++)
+	AbilitySystemComponent = CreateDefaultSubobject<UChronoAbilitySystemComponent>("AbilitySystemComponent");
+	AbilitySystemComponent->SetIsReplicated(true);
+	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Mixed);
+
+	AttributeSet = CreateDefaultSubobject<UChronoAttributeSet>("AttributeSet");
+}
+
+void AChronoGASCharacter::PossessedBy(AController* NewController)
+{
+	Super::PossessedBy(NewController);
+
+	//For SERVER
+	InitAbilityActorInfo(TEXT("PossessedBy"));
+}
+
+void AChronoGASCharacter::OnRep_Controller()
+{
+	Super::OnRep_Controller();
+
+	//For Owning Client
+	InitAbilityActorInfo(TEXT("OnRep_Controller"));
 }
 
 void AChronoGASCharacter::BeginPlay()
 {
 	// Call the base class  
 	Super::BeginPlay();
+
+	InitAbilityActorInfo(TEXT("BeginPlay"));
+
+	// Do only once on SERVER
+	if (HasAuthority())
+	{
+		InitializeDefaultAttributes();
+		GrantStartupAbilities();
+	}
 
 	//Add Input Mapping Context
 	if (APlayerController* PlayerController = Cast<APlayerController>(Controller))
@@ -67,6 +101,70 @@ void AChronoGASCharacter::BeginPlay()
 			Subsystem->AddMappingContext(DefaultMappingContext, 0);
 		}
 	}
+}
+
+UAbilitySystemComponent* AChronoGASCharacter::GetAbilitySystemComponent() const
+{
+	return AbilitySystemComponent;
+}
+
+UAttributeSet* AChronoGASCharacter::GetAttributeSet() const
+{
+	return AttributeSet;
+}
+
+void AChronoGASCharacter::InitAbilityActorInfo(const FString& CallerName)
+{
+	// Player state does not need to outlive the pawn for this demo
+	// So we are not using a dedicated PlayerState class
+	AbilitySystemComponent->InitAbilityActorInfo(this, this);
+	OnAbilityActorInfoSet.Broadcast(AbilitySystemComponent);
+
+
+	FString Message = FString(TEXT("Caller Name = "));
+	Message.Append(CallerName);
+	Message.Append(FString(TEXT(" || Pawn = ")));
+	Message.Append(GetName());
+	Message.Append(FString(TEXT(" || Role = ")));
+	Message.Append(UEnum::GetValueAsString(GetLocalRole()));
+	Message.Append(FString(TEXT(" || PC ")));
+	Message.Append(AbilitySystemComponent->AbilityActorInfo->PlayerController.IsValid() ? FString(TEXT("Valid")) : FString(TEXT("Not Valid")));
+	Message.Append(FString(TEXT(" || Local ")));
+	Message.Append(AbilitySystemComponent->AbilityActorInfo->IsLocallyControlled() ? FString(TEXT("Yes")) : FString(TEXT("No")));
+	UKismetSystemLibrary::PrintString(this, Message, true, true, FLinearColor::Blue, 10.f);
+}
+
+void AChronoGASCharacter::GrantStartupAbilities()
+{
+	// ONLY SERVER operation
+	if (!HasAuthority()) return;
+
+	AbilitySystemComponent->GrantStartupAbilities(StartupAbilities);
+	
+}
+
+void AChronoGASCharacter::ApplyEffectToSelf(TSubclassOf<UGameplayEffect> GameplayEffectClass, float Level) const
+{
+	check(IsValid(AbilitySystemComponent));
+
+	if(!ensureMsgf(GameplayEffectClass, TEXT("GameplayEffectClass is not valid. Please check `DefaultAttributes` is populated in blueprint.")))
+	{
+		return;	
+	}
+
+	FGameplayEffectContextHandle ContextHandle = AbilitySystemComponent->MakeEffectContext();
+	ContextHandle.AddSourceObject(this);
+	const FGameplayEffectSpecHandle EffectSpec = AbilitySystemComponent->MakeOutgoingSpec(GameplayEffectClass, Level, ContextHandle);
+	
+	if (!EffectSpec.IsValid()) return;	
+	// I know I could have just used ApplyGameEffectSpecToSelf
+	AbilitySystemComponent->ApplyGameplayEffectSpecToTarget(*EffectSpec.Data.Get(), AbilitySystemComponent);
+}
+
+void AChronoGASCharacter::InitializeDefaultAttributes() const
+{
+	// Initialize Health and Stamina at start-up
+	ApplyEffectToSelf(DefaultAttributes);
 }
 
 //////////////////////////////////////////////////////////////////////////
