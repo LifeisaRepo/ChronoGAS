@@ -8,7 +8,7 @@
 #include "AbilitySystemInterface.h"
 #include "ChronoGASCharacter.generated.h"
 
-DECLARE_LOG_CATEGORY_EXTERN(LogTemplateCharacter, Log, All);
+DECLARE_LOG_CATEGORY_EXTERN(LogChronoCharacter, Log, All);
 
 class UAbilitySystemComponent;
 class UAttributeSet;
@@ -56,6 +56,8 @@ protected:
 	void Move(const FInputActionValue& Value);
 
 	void Look(const FInputActionValue& Value);
+
+	void OnChronoRecallPressed();
 
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	
@@ -112,6 +114,9 @@ private:
 	/** Look Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* LookAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* ChronoRecallAction;
 
 };
 

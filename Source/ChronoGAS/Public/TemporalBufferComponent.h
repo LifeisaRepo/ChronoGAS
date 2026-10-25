@@ -46,6 +46,10 @@ public:
 	// 0 = newest, GetNumSnapshots() - 1 = oldest
 	const FTemporalSnapshot& GetSnapshotByAge(int32 Age) const;
 
+	void SetRecordingPaused(bool bPaused);
+
+	void ResetBuffer();
+
 protected:
 	virtual void BeginPlay() override;	
 
@@ -110,6 +114,8 @@ private:
 
 	// Time collected since last sample was recorded
 	float SampleAccumulator = 0.f;
+
+	bool bRecordingPaused = false;
 
 	// Owner's ASC
 	UPROPERTY()

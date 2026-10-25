@@ -42,16 +42,17 @@ void UTemporalBufferComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	if (!ShouldRecord()) return;
-	
-	SampleAccumulator += DeltaTime;
-	if (SampleAccumulator >= SampleInterval)
+	if (ShouldRecord())
 	{
-		RecordSnapshot();
+		SampleAccumulator += DeltaTime;
+		if (SampleAccumulator >= SampleInterval)
+		{
+			RecordSnapshot();
 
-		// FMath::Fmod(A, B) = what's left of A after removing as many whole B's as possible
-		SampleAccumulator = FMath::Fmod(SampleAccumulator, SampleInterval);
-	}
+			// FMath::Fmod(A, B) = what's left of A after removing as many whole B's as possible
+			SampleAccumulator = FMath::Fmod(SampleAccumulator, SampleInterval);
+		}
+	}	
 
 	if (ShouldDrawPath())
 	{
@@ -59,8 +60,27 @@ void UTemporalBufferComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 	}
 }
 
+void UTemporalBufferComponent::SetRecordingPaused(bool bPaused)
+{
+	// Take one last snapshot when pausing, so the history ends exactly where the owner is right now
+	if (bPaused && !bRecordingPaused)
+	{
+		RecordSnapshot();
+	}
+
+	bRecordingPaused = bPaused;
+
+	// Start recording time from 0 again when recording resumes
+	SampleAccumulator = 0.0f;
+}
+
 bool UTemporalBufferComponent::ShouldRecord() const
 {
+	if (bRecordingPaused)
+	{
+		return false;
+	}
+
 	// Only allow recording if Server or Owning client
 	const APawn* OwnerPawn = Cast<APawn>(GetOwner());
 	return OwnerPawn && (OwnerPawn->HasAuthority() || OwnerPawn->IsLocallyControlled());
@@ -100,6 +120,13 @@ void UTemporalBufferComponent::WriteSnapshot(const FTemporalSnapshot& Snapshot)
 
 	HeadIndex = (HeadIndex + 1) % Capacity;
 	Count = FMath::Min(Count + 1, Capacity);
+}
+
+void UTemporalBufferComponent::ResetBuffer()
+{
+	HeadIndex = 0;
+	Count = 0;
+	SampleAccumulator = 0.f;
 }
 
 const FTemporalSnapshot& UTemporalBufferComponent::GetSnapshotByAge(int32 Age) const

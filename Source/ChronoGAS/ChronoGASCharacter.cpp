@@ -11,14 +11,15 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 
-#include "AbilitySystem/ChronoAbilitySystemComponent.h"
-#include "AbilitySystem/ChronoAttributeSet.h"
-#include "TemporalBufferComponent.h"
 #include "GameplayTagContainer.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "AbilitySystem/ChronoAbilitySystemComponent.h"
+#include "AbilitySystem/ChronoAttributeSet.h"
+#include "AbilitySystem/ChronoGameplayTags.h"
+#include "TemporalBufferComponent.h"
 
-DEFINE_LOG_CATEGORY(LogTemplateCharacter);
+DEFINE_LOG_CATEGORY(LogChronoCharacter);
 
 //////////////////////////////////////////////////////////////////////////
 // AChronoGASCharacter
@@ -187,10 +188,13 @@ void AChronoGASCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 
 		// Looking
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AChronoGASCharacter::Look);
+
+		// Chrono Recall
+		EnhancedInputComponent->BindAction(ChronoRecallAction, ETriggerEvent::Started, this, &AChronoGASCharacter::OnChronoRecallPressed);
 	}
 	else
 	{
-		UE_LOG(LogTemplateCharacter, Error, TEXT("'%s' Failed to find an Enhanced Input component! This template is built to use the Enhanced Input system. If you intend to use the legacy system, then you will need to update this C++ file."), *GetNameSafe(this));
+		UE_LOG(LogChronoCharacter, Error, TEXT("'%s' Failed to find an Enhanced Input component! This template is built to use the Enhanced Input system. If you intend to use the legacy system, then you will need to update this C++ file."), *GetNameSafe(this));
 	}
 }
 
@@ -227,5 +231,13 @@ void AChronoGASCharacter::Look(const FInputActionValue& Value)
 		// add yaw and pitch input to controller
 		AddControllerYawInput(LookAxisVector.X);
 		AddControllerPitchInput(LookAxisVector.Y);
+	}
+}
+
+void AChronoGASCharacter::OnChronoRecallPressed()
+{
+	if (!AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_ChronoRecall)))
+	{
+		UE_LOG(LogChronoCharacter, Warning, TEXT("Chrono Recall did not activate. Might be already running - or some error -_-"));
 	}
 }
