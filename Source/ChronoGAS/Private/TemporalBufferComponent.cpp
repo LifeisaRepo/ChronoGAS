@@ -129,6 +129,17 @@ void UTemporalBufferComponent::ResetBuffer()
 	SampleAccumulator = 0.f;
 }
 
+float UTemporalBufferComponent::ComputePathDistance() const
+{
+	double Distance = 0.0;
+	for (int32 Age = 0; Age + 1 < Count; Age++)
+	{
+		Distance += FVector::Dist(GetSnapshotByAge(Age).Transform.GetLocation(), GetSnapshotByAge(Age + 1).Transform.GetLocation());
+	}
+
+	return static_cast<float>(Distance);
+}
+
 const FTemporalSnapshot& UTemporalBufferComponent::GetSnapshotByAge(int32 Age) const
 {
 	checkf((Age >= 0 && Age < Count), TEXT("Age cannot be greater than or equal to the count of recorded snapshots"));

@@ -50,6 +50,9 @@ public:
 
 	void ResetBuffer();
 
+	// Total length of the recorded path.
+	float ComputePathDistance() const;
+
 protected:
 	virtual void BeginPlay() override;	
 

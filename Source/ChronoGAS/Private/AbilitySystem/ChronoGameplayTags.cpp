@@ -5,3 +5,8 @@
 
 // Simpler way of defining a new native gameplay tag
 UE_DEFINE_GAMEPLAY_TAG(TAG_Ability_ChronoRecall, "Ability.ChronoRecall");
+
+UE_DEFINE_GAMEPLAY_TAG(TAG_Data_HealAmount, "Data.HealAmount");
+
+UE_DEFINE_GAMEPLAY_TAG(TAG_Data_DamageAmount, "Data.DamageAmount");
+
