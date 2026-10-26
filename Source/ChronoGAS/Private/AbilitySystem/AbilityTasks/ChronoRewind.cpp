@@ -2,6 +2,7 @@
 
 
 #include "AbilitySystem/AbilityTasks/ChronoRewind.h"
+#include "Camera/CameraComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
@@ -13,11 +14,13 @@ UChronoRewind::UChronoRewind()
 	bTickingTask = true;
 }
 
-UChronoRewind* UChronoRewind::CreateChronoRewindTask(UGameplayAbility* OwningAbility, UTemporalBufferComponent* InBuffer, float InDuration)
+UChronoRewind* UChronoRewind::CreateChronoRewindTask(UGameplayAbility* OwningAbility, UTemporalBufferComponent* InBuffer, float InDuration, const FChronoRewindPunch& InPunch)
 {
 	UChronoRewind* Task = NewAbilityTask<UChronoRewind>(OwningAbility);
 	Task->Buffer = InBuffer;
 	Task->Duration = FMath::Max(InDuration, 0.01f);
+	Task->Punch = InPunch;
+	Task->Punch.HoldDuration = FMath::Max(InPunch.HoldDuration, 0.f);
 	return Task;
 }
 
@@ -42,6 +45,7 @@ void UChronoRewind::Activate()
 	}
 
 	TakeOverMovement();
+	BeginPunch();
 
 }
 
@@ -51,12 +55,13 @@ void UChronoRewind::TickTask(float DeltaTime)
 
 	ElapsedTime += DeltaTime;
 
-	ApplyRewindPose(FMath::Clamp(ElapsedTime / Duration, 0.f, 1.f));
+	// Hold on the blast point for HoldDuration, then rewind
+	const float RewindAlpha = FMath::Clamp((ElapsedTime - Punch.HoldDuration) / Duration, 0.f, 1.0f);
+	ApplyRewindPose(RewindAlpha);
+	ApplyPunch(RewindAlpha);
+	UpdateCameraFocus(DeltaTime);
 
-	if (ElapsedTime < Duration)
-	{
-		return;
-	}
+	if (ElapsedTime < Punch.HoldDuration + Duration) return;
 
 	// Reached the oldest snapshot
 	const FVector ExitVelocity = Buffer->GetSnapshotByAge(Buffer->GetNumSnapshots() - 1).Velocity;
@@ -79,6 +84,7 @@ void UChronoRewind::OnDestroy(bool bInOwnerFinished)
 {
 	// Always runs when the task is destroyed to ensure that the character is handed back to the CMC safely.
 	ReleaseMovement();
+	EndPunch();
 
 	if (Buffer)
 	{
@@ -168,6 +174,128 @@ void UChronoRewind::ApplyRewindPose(float Alpha)
 	// Set it
 	Character->SetActorLocationAndRotation(Location, Rotation);
 
+}
+
+void UChronoRewind::BeginPunch()
+{
+	// Camera and time effects are only for owning client
+	if (!Character->IsLocallyControlled()) return;
+	
+	Camera = Character->FindComponentByClass<UCameraComponent>();
+	if (Camera)
+	{
+		BaseFOV = Camera->FieldOfView;
+		BaseFringeIntensity = Camera->PostProcessSettings.SceneFringeIntensity;		// Chromatic aberration -_-
+		bBaseFringeOverride = Camera->PostProcessSettings.bOverride_SceneFringeIntensity;
+		BaseMotionBlurIntensity = Camera->PostProcessSettings.MotionBlurAmount;
+		bBaseMotionBlurOverride = Camera->PostProcessSettings.bOverride_MotionBlurAmount;
+
+		Camera->PostProcessSettings.bOverride_SceneFringeIntensity = true;
+		Camera->PostProcessSettings.bOverride_MotionBlurAmount = true;
+	}
+
+	// Global time dilation cannot be used in multiplayer because it's replicated from the server,
+	// so it would slow down every player... obviously! -_- . So we'll only allow it in Standalone
+	bUseTimeDilation = GetWorld()->GetNetMode() == NM_Standalone;
+
+	// CameraFocus - Keep the camera away from the mouse and keep it pointed at the blast
+	if (Punch.bFocusCameraOnBlast)
+	{
+		LocalController = Character->GetController();
+		if (LocalController)
+		{
+			LocalController->SetIgnoreLookInput(true);
+			FocusPoint = Buffer->GetSnapshotByAge(0).Transform.GetLocation();
+			FocusYaw = LocalController->GetControlRotation().Yaw;
+			bCameraFocusActive = true;
+		}
+
+	}
+
+	bPunchActive = true;
+
+	ApplyPunch(0.f);
+
+}
+
+void UChronoRewind::ApplyPunch(float RewindAlpha)
+{
+	if (!bPunchActive) return;
+
+	// Camera effects: 0 -> 1 -> 0 over the scrub
+	const float Pulse = FMath::Max(0.f, FMath::Sin(UE_PI * RewindAlpha));
+
+	if (Camera)
+	{
+		Camera->SetFieldOfView(BaseFOV + Punch.ExtraFOV * Pulse);
+		Camera->PostProcessSettings.MotionBlurAmount = BaseMotionBlurIntensity + Punch.PeakMotionBlurAmount * Pulse;
+
+		// Assuming that we are not using the camera's chromatic aberration by default.
+		// Otherwise, the calculation would be dependent on the bOverride_SceneFringeIntensity flag
+		Camera->PostProcessSettings.SceneFringeIntensity = Punch.PeakFringeIntensity * Pulse;
+	}
+
+	if (bUseTimeDilation)
+	{
+		const float SlowMo = 1.f - FMath::SmoothStep(0.7f, 1.f, RewindAlpha);
+		const float WorldDilation = FMath::Max(FMath::Lerp(1.f, Punch.PeakWorldTimeDilation, SlowMo), 0.05f);
+		UGameplayStatics::SetGlobalTimeDilation(GetWorld(), WorldDilation);
+		Character->CustomTimeDilation = 1.f / WorldDilation;
+	}
+}
+
+void UChronoRewind::UpdateCameraFocus(float DeltaTime)
+{
+	if (!bCameraFocusActive || !LocalController) return;
+
+	FVector ToFocus = FocusPoint - Character->GetActorLocation();
+	ToFocus.Z = 0.f;
+
+	// FocusYaw starts as the player's current Yaw, @see BeginPunch().
+	// Don't override it unless the player is more than 100cm away from the blast.
+	// This avoid unwanted weird camera movements where the camera might swing wildly.
+	if (ToFocus.SizeSquared() > FMath::Square(100.f))
+	{
+		FocusYaw = ToFocus.Rotation().Yaw;
+	}
+
+	const FRotator Current = LocalController->GetControlRotation();
+	const FRotator Target(Current.Pitch, FocusYaw, Current.Roll);
+	LocalController->SetControlRotation(FMath::RInterpTo(Current, Target, DeltaTime, Punch.CameraTurnSpeed));
+}
+
+void UChronoRewind::EndPunch()
+{
+	if (!bPunchActive) return;
+	
+	bPunchActive = false;
+
+	if (bCameraFocusActive)
+	{
+		bCameraFocusActive = false;
+		if (LocalController)
+		{
+			LocalController->SetIgnoreLookInput(false);
+		}
+	}
+
+	if (Camera)
+	{
+		Camera->SetFieldOfView(BaseFOV);
+		Camera->PostProcessSettings.SceneFringeIntensity = BaseFringeIntensity;
+		Camera->PostProcessSettings.bOverride_SceneFringeIntensity = bBaseFringeOverride;
+		Camera->PostProcessSettings.MotionBlurAmount = BaseMotionBlurIntensity;
+		Camera->PostProcessSettings.bOverride_MotionBlurAmount = bBaseMotionBlurOverride;
+	}
+
+	if (bUseTimeDilation)
+	{
+		UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 1.f);
+		if (Character)
+		{
+			Character->CustomTimeDilation = 1.f;
+		}
+	}
 }
 
 void UChronoRewind::Finish()

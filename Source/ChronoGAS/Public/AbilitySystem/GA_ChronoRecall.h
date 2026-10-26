@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Abilities/GameplayAbility.h"
+#include "AbilitySystem/AbilityTasks/ChronoRewind.h"
 #include "GA_ChronoRecall.generated.h"
 
 class UGameplayEffect;
@@ -37,6 +38,10 @@ private:
 	// Duration for which the rewind effect runs, in seconds
 	UPROPERTY(EditDefaultsOnly, Category="ChronoRecall")
 	float RewindDuration = 0.6f;
+
+	// Handles Camera FOV, Chromatic aberration and time dilation during the rewind
+	UPROPERTY(EditDefaultsOnly, Category = "ChronoRecall")
+	FChronoRewindPunch RewindPunch;
 
 	// The instant GE which heals the owner at the end of rewind.
 	UPROPERTY(EditDefaultsOnly, Category="ChronoRecall")

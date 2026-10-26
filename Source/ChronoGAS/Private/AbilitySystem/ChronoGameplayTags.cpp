@@ -10,3 +10,7 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_Data_HealAmount, "Data.HealAmount");
 
 UE_DEFINE_GAMEPLAY_TAG(TAG_Data_DamageAmount, "Data.DamageAmount");
 
+UE_DEFINE_GAMEPLAY_TAG(TAG_State_Rewinding, "State.Rewinding");
+
+UE_DEFINE_GAMEPLAY_TAG(TAG_Cooldown_ChronoRecall, "Cooldown.ChronoRecall");
+

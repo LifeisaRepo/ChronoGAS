@@ -6,7 +6,7 @@
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
-#include "GameFramework/Controller.h"
+#include "GameFramework/PlayerController.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
@@ -17,7 +17,9 @@
 #include "AbilitySystem/ChronoAbilitySystemComponent.h"
 #include "AbilitySystem/ChronoAttributeSet.h"
 #include "AbilitySystem/ChronoGameplayTags.h"
+#include "UI/ChronoTelemetryWidget.h"
 #include "TemporalBufferComponent.h"
+#include "Components/WidgetComponent.h"
 
 DEFINE_LOG_CATEGORY(LogChronoCharacter);
 
@@ -83,10 +85,26 @@ void AChronoGASCharacter::OnRep_Controller()
 	InitAbilityActorInfo(TEXT("OnRep_Controller"));
 }
 
+void AChronoGASCharacter::Die(const FVector LaunchVelocity)
+{
+	if (!HasAuthority() || bIsDead) return;
+	
+	MulticastRagdoll(LaunchVelocity);
+}
+
 void AChronoGASCharacter::BeginPlay()
 {
 	// Call the base class  
 	Super::BeginPlay();
+
+	// Using the same widget for AI dummy health bars also
+	if (const UWidgetComponent* WidgetComp = FindComponentByClass<UWidgetComponent>())
+	{
+		if (UChronoTelemetryWidget* HealthWidget = Cast<UChronoTelemetryWidget>(WidgetComp->GetUserWidgetObject()))
+		{
+			HealthWidget->SetObservedCharacter(this);
+		}
+	}
 
 	InitAbilityActorInfo(TEXT("BeginPlay"));
 
@@ -124,6 +142,8 @@ void AChronoGASCharacter::InitAbilityActorInfo(const FString& CallerName)
 	AbilitySystemComponent->InitAbilityActorInfo(this, this);
 	OnAbilityActorInfoSet.Broadcast(AbilitySystemComponent);
 
+	TryCreateTelemetryWidget();
+
 
 	FString Message = FString(TEXT("Caller Name = "));
 	Message.Append(CallerName);
@@ -136,6 +156,7 @@ void AChronoGASCharacter::InitAbilityActorInfo(const FString& CallerName)
 	Message.Append(FString(TEXT(" || Local ")));
 	Message.Append(AbilitySystemComponent->AbilityActorInfo->IsLocallyControlled() ? FString(TEXT("Yes")) : FString(TEXT("No")));
 	// UKismetSystemLibrary::PrintString(this, Message, true, true, FLinearColor::Blue, 10.f);
+
 }
 
 void AChronoGASCharacter::GrantStartupAbilities()
@@ -169,6 +190,45 @@ void AChronoGASCharacter::InitializeDefaultAttributes() const
 {
 	// Initialize Health and Stamina at start-up
 	ApplyEffectToSelf(DefaultAttributes);
+}
+
+void AChronoGASCharacter::TryCreateTelemetryWidget()
+{
+	if (TelemetryWidget || !TelemetryWidgetClass || !IsLocallyControlled()) return;
+	
+	// Ignore 'Locally Controlled' AIControllers on the Server
+	if (APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		TelemetryWidget = CreateWidget<UChronoTelemetryWidget>(PC, TelemetryWidgetClass);
+		if (TelemetryWidget)
+		{
+			TelemetryWidget->SetObservedCharacter(this);
+			TelemetryWidget->AddToViewport();
+		}
+	}
+}
+
+
+void AChronoGASCharacter::MulticastRagdoll_Implementation(FVector LaunchVelocity)
+{
+	if (bIsDead) return;
+	bIsDead = true;
+
+	GetCharacterMovement()->DisableMovement();
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
+	GetMesh()->SetSimulatePhysics(true);
+	GetMesh()->SetAllPhysicsLinearVelocity(LaunchVelocity);
+
+	if (const UWidgetComponent* WidgetComp = FindComponentByClass<UWidgetComponent>())
+	{
+		if (UChronoTelemetryWidget* HealthWidget = Cast<UChronoTelemetryWidget>(WidgetComp->GetUserWidgetObject()))
+		{
+			HealthWidget->SetVisibility(ESlateVisibility::Hidden);
+		}
+	}
+
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -238,6 +298,7 @@ void AChronoGASCharacter::OnChronoRecallPressed()
 {
 	if (!AbilitySystemComponent->TryActivateAbilitiesByTag(FGameplayTagContainer(TAG_Ability_ChronoRecall)))
 	{
-		UE_LOG(LogChronoCharacter, Warning, TEXT("Chrono Recall did not activate. Might be already running - or some error -_-"));
+		UE_LOG(LogChronoCharacter, Warning, TEXT("Chrono Recall did not activate. Might be already running or on cooldown - or some error -_-"));
 	}
 }
+

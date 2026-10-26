@@ -10,6 +10,8 @@
 
 DECLARE_LOG_CATEGORY_EXTERN(LogChronoCharacter, Log, All);
 
+class UChronoTelemetryWidget;
+
 class UAbilitySystemComponent;
 class UAttributeSet;
 class UChronoAbilitySystemComponent;
@@ -36,6 +38,11 @@ public:
 
 	virtual void PossessedBy(AController* NewController) override;
 	virtual void OnRep_Controller() override;
+
+	// Server only: Ragdolls this character on every machine
+	void Die(const FVector LaunchVelocity);
+
+	bool IsDead() const { return bIsDead; }
 
 	//~ GAS
 
@@ -89,7 +96,21 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category="Chrono Recall")
 	TObjectPtr<UTemporalBufferComponent> TemporalBuffer;
 
+	// Telemetry overlay shown to local player
+	UPROPERTY(EditDefaultsOnly, Category="Chrono Recall")
+	TSubclassOf<UChronoTelemetryWidget> TelemetryWidgetClass;
+
+	UPROPERTY()
+	TObjectPtr<UChronoTelemetryWidget> TelemetryWidget;
+
+	void TryCreateTelemetryWidget();
+
 private:
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastRagdoll(FVector LaunchVelocity);
+
+	bool bIsDead = false;
 
 	/** Camera boom positioning the camera behind the character */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))

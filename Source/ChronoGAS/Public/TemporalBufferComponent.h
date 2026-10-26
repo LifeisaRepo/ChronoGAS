@@ -43,6 +43,9 @@ public:
 	// How many slots hold data
 	int32 GetNumSnapshots() const { return Count; }
 
+	// Total number of slots in the buffer
+	int32 GetCapacity() const { return Capacity; }
+
 	// 0 = newest, GetNumSnapshots() - 1 = oldest
 	const FTemporalSnapshot& GetSnapshotByAge(int32 Age) const;
 

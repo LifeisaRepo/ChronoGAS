@@ -4,13 +4,13 @@
 #include "AbilitySystem/GA_ChronoRecall.h"
 #include "AbilitySystemComponent.h"
 #include "AbilitySystemGlobals.h"
-#include "AbilitySystem/AbilityTasks/ChronoRewind.h"
 #include "AbilitySystem/ChronoAttributeSet.h"
 #include "AbilitySystem/ChronoGameplayTags.h"
 #include "DrawDebugHelpers.h"
 #include "TemporalBufferComponent.h"
 #include "GameFramework/Character.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "ChronoGAS/ChronoGASCharacter.h"
 
 UGA_ChronoRecall::UGA_ChronoRecall()
 {
@@ -19,6 +19,7 @@ UGA_ChronoRecall::UGA_ChronoRecall()
 	NetExecutionPolicy = EGameplayAbilityNetExecutionPolicy::LocalPredicted;
 
 	AbilityTags.AddTag(TAG_Ability_ChronoRecall);
+	ActivationOwnedTags.AddTag(TAG_State_Rewinding);
 }
 
 void UGA_ChronoRecall::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
@@ -36,12 +37,19 @@ void UGA_ChronoRecall::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 		return;
 	}
 
+	// Applies cooldown (and cost)
+	if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
+	{
+		EndAbility(Handle, ActorInfo, ActivationInfo, true, true);
+		return;
+	}
+
 	UE_LOG(LogTemp, Display, TEXT("ChronoRecall [%s, %s]: rewind started"), *Avatar->GetName(), *UEnum::GetValueAsString(Avatar->GetLocalRole()));
 
 	// Detonate before rewind
 	Detonate();
 
-	UChronoRewind* RewindTask = UChronoRewind::CreateChronoRewindTask(this, TemporalBuffer, RewindDuration);
+	UChronoRewind* RewindTask = UChronoRewind::CreateChronoRewindTask(this, TemporalBuffer, RewindDuration, RewindPunch);
 	RewindTask->OnChronoRewindFinished.AddUObject(this, &UGA_ChronoRecall::OnRewindFinished);
 	RewindTask->ReadyForActivation();
 }
@@ -120,7 +128,16 @@ void UGA_ChronoRecall::Detonate()
 			const float Falloff = 1.f - 0.6f * DistanceRatio;
 			const FVector LaunchVelocity = (Away + FVector(0.f, 0.f, 0.6f)) * LaunchSpeed * Falloff;
 
-			HitCharacter->LaunchCharacter(LaunchVelocity, true, true);
+			AChronoGASCharacter* ChronoCharacter = Cast<AChronoGASCharacter>(HitCharacter);
+			const bool bKilled = TargetASC && TargetASC->GetNumericAttribute(UChronoAttributeSet::GetHealthAttribute()) <= 0.f;
+			if (ChronoCharacter && bKilled)
+			{
+				ChronoCharacter->Die(LaunchVelocity);
+			}
+			else
+			{
+				HitCharacter->LaunchCharacter(LaunchVelocity, true, true);
+			}
 		}
 	}
 
