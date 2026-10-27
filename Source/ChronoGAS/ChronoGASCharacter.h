@@ -11,6 +11,7 @@
 DECLARE_LOG_CATEGORY_EXTERN(LogChronoCharacter, Log, All);
 
 class UChronoTelemetryWidget;
+class UChronoGhostComponent;
 
 class UAbilitySystemComponent;
 class UAttributeSet;
@@ -62,6 +63,10 @@ protected:
 
 	void Move(const FInputActionValue& Value);
 
+	void Sprint();
+
+	void StopSprinting();
+
 	void Look(const FInputActionValue& Value);
 
 	void OnChronoRecallPressed();
@@ -95,6 +100,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, Category="Chrono Recall")
 	TObjectPtr<UTemporalBufferComponent> TemporalBuffer;
+
+	UPROPERTY(VisibleAnywhere, Category="Chrono Recall")
+	TObjectPtr<UChronoGhostComponent> GhostComponent;
 
 	// Telemetry overlay shown to local player
 	UPROPERTY(EditDefaultsOnly, Category="Chrono Recall")
@@ -131,6 +139,9 @@ private:
 	/** Move Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
 	UInputAction* MoveAction;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))
+	UInputAction* SprintAction;
 
 	/** Look Input Action */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Input, meta = (AllowPrivateAccess = "true"))

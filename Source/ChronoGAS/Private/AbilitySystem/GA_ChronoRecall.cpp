@@ -22,6 +22,16 @@ UGA_ChronoRecall::UGA_ChronoRecall()
 	ActivationOwnedTags.AddTag(TAG_State_Rewinding);
 }
 
+bool UGA_ChronoRecall::CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags, const FGameplayTagContainer* TargetTags, FGameplayTagContainer* OptionalRelevantTags) const
+{
+	if (!Super::CanActivateAbility(Handle, ActorInfo, SourceTags, TargetTags, OptionalRelevantTags)) return false;
+	
+	// Nowhere to rewind to - character is standing still for the past 3 seconds
+	const AActor* Avatar = ActorInfo ? ActorInfo->AvatarActor.Get() : nullptr;
+	const UTemporalBufferComponent* Buffer = Avatar ? Avatar->FindComponentByClass<UTemporalBufferComponent>() : nullptr;
+	return Buffer && Buffer->ComputePathDistance() >= MinPathDistance;
+}
+
 void UGA_ChronoRecall::ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData)
 {
 	Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);

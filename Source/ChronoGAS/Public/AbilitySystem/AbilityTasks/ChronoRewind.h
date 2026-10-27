@@ -10,6 +10,9 @@ class ACharacter;
 class AController;
 class UCameraComponent;
 class UTemporalBufferComponent;
+class UChronoGhostComponent;
+class UMaterialInterface;
+class UMaterialInstanceDynamic;
 
 DECLARE_MULTICAST_DELEGATE(FOnChronoRewindFinished);
 
@@ -52,6 +55,16 @@ struct FChronoRewindPunch
 	// This value is not dilated by time.
 	UPROPERTY(EditAnywhere, Category = "Rewind Punch", meta = (ClampMin = "0.0"))
 	float HoldDuration = 0.3f;
+
+	UPROPERTY(EditAnywhere, Category = "Rewind Punch")
+	bool bSpawnGhosts = true;
+
+	UPROPERTY(EditAnywhere, Category = "Rewind Punch", meta = (ClampMin = "0.01", EditCondition = "bSpawnGhosts"))
+	float GhostInterval = 0.08f;
+
+	// Should have a scalar parameter named "Opacity" for Opacity.
+	UPROPERTY(EditAnywhere, Category = "Rewind Punch")
+	TObjectPtr<UMaterialInterface> RewindOverlayMaterial;
 };
 
 /**
@@ -105,6 +118,9 @@ private:
 
 	// Turns the camera towards the blast
 	void UpdateCameraFocus(float DeltaTime);
+
+	// Drops a ghost every GhostInterval on the rewind path
+	void UpdateGhosts(float DeltaTime, float RewindAlpha);
 	
 	// Puts the camera and time back as they were.
 	void EndPunch();
@@ -115,10 +131,19 @@ private:
 	TObjectPtr<UTemporalBufferComponent> Buffer;
 
 	UPROPERTY()
+	TObjectPtr<UChronoGhostComponent> Ghosts;
+
+	UPROPERTY()
 	TObjectPtr<ACharacter> Character;
 
 	UPROPERTY()
 	TObjectPtr<UCameraComponent> Camera;
+
+	UPROPERTY()
+	TObjectPtr<UMaterialInterface> BaseOverlayMaterial;
+
+	UPROPERTY()
+	TObjectPtr<UMaterialInstanceDynamic> OverlayMID;
 
 	// Duration that the task will run - rewind will happen
 	float Duration = 0.6f;
@@ -126,6 +151,8 @@ private:
 	float ElapsedTime = 0.f;
 
 	bool bMovementTakenOver = false;
+
+	float GhostAccumulator = 0.f;
 
 	FChronoRewindPunch Punch;
 

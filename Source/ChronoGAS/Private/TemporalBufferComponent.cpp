@@ -96,7 +96,7 @@ bool UTemporalBufferComponent::ShouldDrawPath() const
 
 	// Draw only on Owning client
 	const APawn* OwnerPawn = Cast<APawn>(GetOwner());
-	return OwnerPawn && OwnerPawn->IsLocallyControlled();
+	return OwnerPawn && OwnerPawn->IsLocallyControlled() && OwnerPawn->IsPlayerControlled();
 }
 
 void UTemporalBufferComponent::RecordSnapshot()

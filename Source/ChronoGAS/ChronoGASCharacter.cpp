@@ -17,6 +17,7 @@
 #include "AbilitySystem/ChronoAbilitySystemComponent.h"
 #include "AbilitySystem/ChronoAttributeSet.h"
 #include "AbilitySystem/ChronoGameplayTags.h"
+#include "AbilitySystem/ChronoGhostComponent.h"
 #include "UI/ChronoTelemetryWidget.h"
 #include "TemporalBufferComponent.h"
 #include "Components/WidgetComponent.h"
@@ -67,6 +68,8 @@ AChronoGASCharacter::AChronoGASCharacter()
 	AttributeSet = CreateDefaultSubobject<UChronoAttributeSet>("AttributeSet");
 
 	TemporalBuffer = CreateDefaultSubobject<UTemporalBufferComponent>("TemporalBuffer");
+
+	GhostComponent = CreateDefaultSubobject<UChronoGhostComponent>("GhostComponent");
 }
 
 void AChronoGASCharacter::PossessedBy(AController* NewController)
@@ -243,6 +246,9 @@ void AChronoGASCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInput
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
 
+		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Started, this, &AChronoGASCharacter::Sprint);
+		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this, &AChronoGASCharacter::StopSprinting);
+
 		// Moving
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AChronoGASCharacter::Move);
 
@@ -279,6 +285,16 @@ void AChronoGASCharacter::Move(const FInputActionValue& Value)
 		AddMovementInput(ForwardDirection, MovementVector.Y);
 		AddMovementInput(RightDirection, MovementVector.X);
 	}
+}
+
+void AChronoGASCharacter::Sprint()
+{
+	GetCharacterMovement()->MaxWalkSpeed = 800.f;
+}
+
+void AChronoGASCharacter::StopSprinting()
+{
+	GetCharacterMovement()->MaxWalkSpeed = 500.f;
 }
 
 void AChronoGASCharacter::Look(const FInputActionValue& Value)

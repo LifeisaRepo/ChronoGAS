@@ -22,6 +22,8 @@ public:
 
 	UGA_ChronoRecall();
 
+	virtual bool CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags = nullptr, const FGameplayTagContainer* TargetTags = nullptr, FGameplayTagContainer* OptionalRelevantTags = nullptr) const override;
+
 	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
 	
 private:
@@ -49,6 +51,11 @@ private:
 
 	UPROPERTY(EditDefaultsOnly, Category = "ChronoRecall|Detonation")
 	TSubclassOf<UGameplayEffect> BlastDamageEffect;
+
+	// The player character need to move atleast this much distance
+	// if they want to enable the ability.
+	UPROPERTY(EditDefaultsOnly, Category = "ChronoRecall|Detonation")
+	float MinPathDistance = 25.f;
 
 	// Length of recorded path at which blast reaches full power
 	UPROPERTY(EditDefaultsOnly, Category="ChronoRecall|Detonation")
