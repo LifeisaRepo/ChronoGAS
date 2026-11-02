@@ -222,7 +222,9 @@ void UChronoRewind::ApplyPunch(float RewindAlpha)
 {
 	if (!bPunchActive) return;
 
-	// Camera effects: 0 -> 1 -> 0 over the scrub
+	// Chromatic aberration: 1 -> 0
+	const float FringePulse = FMath::Max(0.f, FMath::Cos(UE_PI / 2 * RewindAlpha));
+	// Other Camera effects: 0 -> 1 -> 0 over the scrub
 	const float Pulse = FMath::Max(0.f, FMath::Sin(UE_PI * RewindAlpha));
 		
 	if (Camera)
@@ -232,7 +234,7 @@ void UChronoRewind::ApplyPunch(float RewindAlpha)
 
 		// Assuming that we are not using the camera's chromatic aberration by default.
 		// Otherwise, the calculation would be dependent on the bOverride_SceneFringeIntensity flag
-		Camera->PostProcessSettings.SceneFringeIntensity = Punch.PeakFringeIntensity * Pulse;
+		Camera->PostProcessSettings.SceneFringeIntensity = Punch.PeakFringeIntensity * FringePulse;
 	}
 
 	if (bUseTimeDilation)
@@ -240,7 +242,8 @@ void UChronoRewind::ApplyPunch(float RewindAlpha)
 		const float SlowMo = 1.f - FMath::SmoothStep(0.7f, 1.f, RewindAlpha);
 		const float WorldDilation = FMath::Max(FMath::Lerp(1.f, Punch.PeakWorldTimeDilation, SlowMo), 0.05f);
 		UGameplayStatics::SetGlobalTimeDilation(GetWorld(), WorldDilation);
-		Character->CustomTimeDilation = 1.f / WorldDilation;
+		if (RewindAlpha > 0.01f) Character->CustomTimeDilation = 1.f / WorldDilation;
+		// else Character->CustomTimeDilation = WorldDilation;
 	}
 }
 

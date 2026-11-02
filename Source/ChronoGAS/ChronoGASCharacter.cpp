@@ -222,7 +222,8 @@ void AChronoGASCharacter::MulticastRagdoll_Implementation(FVector LaunchVelocity
 
 	GetMesh()->SetCollisionProfileName(TEXT("Ragdoll"));
 	GetMesh()->SetSimulatePhysics(true);
-	GetMesh()->SetAllPhysicsLinearVelocity(LaunchVelocity);
+	// GetMesh()->SetAllPhysicsLinearVelocity(LaunchVelocity);
+	GetMesh()->AddImpulse(LaunchVelocity, NAME_None, true);
 
 	if (const UWidgetComponent* WidgetComp = FindComponentByClass<UWidgetComponent>())
 	{

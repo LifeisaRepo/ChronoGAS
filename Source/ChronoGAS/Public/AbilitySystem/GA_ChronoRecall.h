@@ -80,6 +80,10 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category = "ChronoRecall|Detonation")
 	float MaxLaunchSpeed = 1200.f;
 
+	// Launch speed multiplier for characters that are killed by the blast
+	UPROPERTY(EditDefaultsOnly, Category = "ChronoRecall|Detonation")
+	float LaunchSpeedBoostOnKill = 5.f;
+
 	// Avatar's buffer, found on activation
 	UPROPERTY()
 	TObjectPtr<UTemporalBufferComponent> TemporalBuffer;

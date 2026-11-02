@@ -147,7 +147,7 @@ void UGA_ChronoRecall::Detonate()
 			const bool bKilled = TargetASC && TargetASC->GetNumericAttribute(UChronoAttributeSet::GetHealthAttribute()) <= 0.f;
 			if (ChronoCharacter && bKilled)
 			{
-				ChronoCharacter->Die(LaunchVelocity);
+				ChronoCharacter->Die(LaunchVelocity * LaunchSpeedBoostOnKill);
 			}
 			else
 			{
