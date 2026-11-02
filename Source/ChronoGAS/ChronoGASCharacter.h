@@ -65,7 +65,7 @@ protected:
 
 	void Sprint();
 
-	void StopSprinting();
+	void StopSprinting();	
 
 	void Look(const FInputActionValue& Value);
 
@@ -117,6 +117,9 @@ private:
 
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastRagdoll(FVector LaunchVelocity);
+
+	UFUNCTION(Server, Reliable)
+	void ServerSetSprint(bool bSprinting);
 
 	bool bIsDead = false;
 

@@ -234,6 +234,18 @@ void AChronoGASCharacter::MulticastRagdoll_Implementation(FVector LaunchVelocity
 
 }
 
+void AChronoGASCharacter::ServerSetSprint_Implementation(bool bSprinting)
+{
+	if (bSprinting)
+	{
+		GetCharacterMovement()->MaxWalkSpeed = 800.f;
+	}
+	else
+	{
+		GetCharacterMovement()->MaxWalkSpeed = 500.f;
+	}
+}
+
 //////////////////////////////////////////////////////////////////////////
 // Input
 
@@ -289,12 +301,20 @@ void AChronoGASCharacter::Move(const FInputActionValue& Value)
 
 void AChronoGASCharacter::Sprint()
 {
-	GetCharacterMovement()->MaxWalkSpeed = 800.f;
+	if (Controller != nullptr)
+	{
+		GetCharacterMovement()->MaxWalkSpeed = 800.f;
+		ServerSetSprint(true);
+	}
 }
 
 void AChronoGASCharacter::StopSprinting()
 {
-	GetCharacterMovement()->MaxWalkSpeed = 500.f;
+	if (Controller != nullptr)
+	{
+		GetCharacterMovement()->MaxWalkSpeed = 500.f;
+		ServerSetSprint(false);
+	}
 }
 
 void AChronoGASCharacter::Look(const FInputActionValue& Value)

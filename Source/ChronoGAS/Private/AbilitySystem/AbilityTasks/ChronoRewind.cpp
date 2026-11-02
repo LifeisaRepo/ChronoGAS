@@ -7,12 +7,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
 #include "TemporalBufferComponent.h"
-#include "AbilitySystem/ChronoGhostComponent.h"
-#include "Components/SkeletalMeshComponent.h"
-#include "Materials/MaterialInstanceDynamic.h"
 #include "Kismet/GameplayStatics.h"
-
-static const FName OverlayOpacityParameterName(TEXT("Opacity"));
 
 UChronoRewind::UChronoRewind()
 {
@@ -26,7 +21,6 @@ UChronoRewind* UChronoRewind::CreateChronoRewindTask(UGameplayAbility* OwningAbi
 	Task->Duration = FMath::Max(InDuration, 0.01f);
 	Task->Punch = InPunch;
 	Task->Punch.HoldDuration = FMath::Max(InPunch.HoldDuration, 0.f);
-	Task->Punch.GhostInterval = FMath::Max(InPunch.GhostInterval, 0.01f);
 	return Task;
 }
 
@@ -66,7 +60,6 @@ void UChronoRewind::TickTask(float DeltaTime)
 	ApplyRewindPose(RewindAlpha);
 	ApplyPunch(RewindAlpha);
 	UpdateCameraFocus(DeltaTime);
-	UpdateGhosts(DeltaTime, RewindAlpha);
 
 	if (ElapsedTime < Punch.HoldDuration + Duration) return;
 
@@ -218,25 +211,7 @@ void UChronoRewind::BeginPunch()
 		}
 
 	}
-
-	// Create the ghost pool during the blast - to mitigate any possible hitch
-	if (Punch.bSpawnGhosts)
-	{
-		Ghosts = Character->FindComponentByClass<UChronoGhostComponent>();
-		if (Ghosts)
-		{
-			Ghosts->EnsurePool();
-		}
-	}
-
-	if (Punch.RewindOverlayMaterial)
-	{
-		USkeletalMeshComponent* Mesh = Character->GetMesh();
-		BaseOverlayMaterial = Mesh->GetOverlayMaterial();
-		OverlayMID = UMaterialInstanceDynamic::Create(Punch.RewindOverlayMaterial, Character);
-		Mesh->SetOverlayMaterial(OverlayMID);
-	}
-
+	
 	bPunchActive = true;
 
 	ApplyPunch(0.f);
@@ -249,13 +224,7 @@ void UChronoRewind::ApplyPunch(float RewindAlpha)
 
 	// Camera effects: 0 -> 1 -> 0 over the scrub
 	const float Pulse = FMath::Max(0.f, FMath::Sin(UE_PI * RewindAlpha));
-
-	if (OverlayMID)
-	{
-		const float Glow = 1.f - FMath::SmoothStep(0.7f, 1.f, RewindAlpha);
-		OverlayMID->SetScalarParameterValue(OverlayOpacityParameterName, Glow);
-	}
-
+		
 	if (Camera)
 	{
 		Camera->SetFieldOfView(BaseFOV + Punch.ExtraFOV * Pulse);
@@ -295,29 +264,11 @@ void UChronoRewind::UpdateCameraFocus(float DeltaTime)
 	LocalController->SetControlRotation(FMath::RInterpTo(Current, Target, DeltaTime, Punch.CameraTurnSpeed));
 }
 
-void UChronoRewind::UpdateGhosts(float DeltaTime, float RewindAlpha)
-{
-	if (!bPunchActive || !Ghosts || RewindAlpha <= 0.f || RewindAlpha >= 1.f) return;
-
-	GhostAccumulator += DeltaTime;
-	if (GhostAccumulator >= Punch.GhostInterval)
-	{
-		GhostAccumulator = FMath::Fmod(GhostAccumulator, Punch.GhostInterval);
-		Ghosts->SpawnGhost();
-	}
-}
-
 void UChronoRewind::EndPunch()
 {
 	if (!bPunchActive) return;
 	
 	bPunchActive = false;
-
-	if (OverlayMID && Character)
-	{
-		Character->GetMesh()->SetOverlayMaterial(BaseOverlayMaterial);
-		OverlayMID = nullptr;
-	}
 
 	if (bCameraFocusActive)
 	{

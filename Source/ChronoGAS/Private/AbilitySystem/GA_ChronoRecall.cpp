@@ -6,7 +6,6 @@
 #include "AbilitySystemGlobals.h"
 #include "AbilitySystem/ChronoAttributeSet.h"
 #include "AbilitySystem/ChronoGameplayTags.h"
-#include "DrawDebugHelpers.h"
 #include "TemporalBufferComponent.h"
 #include "GameFramework/Character.h"
 #include "Kismet/KismetSystemLibrary.h"
@@ -59,6 +58,12 @@ void UGA_ChronoRecall::ActivateAbility(const FGameplayAbilitySpecHandle Handle, 
 	// Detonate before rewind
 	Detonate();
 
+	// Ghosts cue
+	FGameplayCueParameters RewindCueParams;
+	RewindCueParams.RawMagnitude = RewindPunch.HoldDuration;
+	RewindCueParams.NormalizedMagnitude = RewindDuration;
+	K2_AddGameplayCueWithParams(TAG_GameplayCue_ChronoRewind, RewindCueParams);
+
 	UChronoRewind* RewindTask = UChronoRewind::CreateChronoRewindTask(this, TemporalBuffer, RewindDuration, RewindPunch);
 	RewindTask->OnChronoRewindFinished.AddUObject(this, &UGA_ChronoRecall::OnRewindFinished);
 	RewindTask->ReadyForActivation();
@@ -77,12 +82,12 @@ void UGA_ChronoRecall::Detonate()
 	const FVector Origin = Avatar->GetActorLocation();
 	const float Radius = FMath::Lerp(MinBlastRadius, MaxBlastRadius, Power);
 
-	// Visual
-	if (IsLocallyControlled())
-	{
-		const FColor Color = FLinearColor::LerpUsingHSV(FLinearColor::Green, FLinearColor::Red, Power).ToFColor(true);
-		DrawDebugSphere(World, Origin, Radius, 24, Color, false, 5.f, 0, 2.f);
-	}
+	// Visual and sound
+	FGameplayCueParameters BlastCueParams;
+	BlastCueParams.Location = Origin;
+	BlastCueParams.RawMagnitude = Radius;
+	BlastCueParams.NormalizedMagnitude = Power;
+	K2_ExecuteGameplayCueWithParams(TAG_GameplayCue_ChronoBlast, BlastCueParams);
 
 	// Gameplay - only server
 

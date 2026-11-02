@@ -14,3 +14,7 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_State_Rewinding, "State.Rewinding");
 
 UE_DEFINE_GAMEPLAY_TAG(TAG_Cooldown_ChronoRecall, "Cooldown.ChronoRecall");
 
+UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_ChronoRewind, "GameplayCue.ChronoRewind");
+
+UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_ChronoBlast, "GameplayCue.ChronoBlast");
+
