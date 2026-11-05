@@ -7,12 +7,7 @@
 #include "AbilitySystem/ChronoAttributeSet.h"
 #include "GameFramework/Pawn.h"
 #include "DrawDebugHelpers.h"
-#include "HAL/IConsoleManager.h"
-
-static TAutoConsoleVariable<bool> CVarChronoDrawPath(
-	TEXT("Chrono.DrawPath"),
-	true,
-	TEXT("Draw the temporal buffer's recorded path. 0 = off, 1 = on"));
+#include "ChronoGAS/ChronoGAS.h"
 
 UTemporalBufferComponent::UTemporalBufferComponent()
 {
