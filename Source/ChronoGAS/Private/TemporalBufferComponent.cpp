@@ -55,6 +55,19 @@ void UTemporalBufferComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 	}
 }
 
+void UTemporalBufferComponent::RecordSnapshot()
+{
+	const AActor* OwnerActor = GetOwner();
+
+	FTemporalSnapshot Snapshot;
+	Snapshot.Timestamp = GetWorld()->GetTimeSeconds();
+	Snapshot.Transform = OwnerActor->GetActorTransform();
+	Snapshot.Velocity = OwnerActor->GetVelocity();
+	Snapshot.Health = CachedASC ? CachedASC->GetNumericAttribute(UChronoAttributeSet::GetHealthAttribute()) : 0.f;
+
+	WriteSnapshot(Snapshot);	
+}
+
 void UTemporalBufferComponent::SetRecordingPaused(bool bPaused)
 {
 	// Take one last snapshot when pausing, so the history ends exactly where the owner is right now
@@ -92,19 +105,6 @@ bool UTemporalBufferComponent::ShouldDrawPath() const
 	// Draw only on Owning client
 	const APawn* OwnerPawn = Cast<APawn>(GetOwner());
 	return OwnerPawn && OwnerPawn->IsLocallyControlled() && OwnerPawn->IsPlayerControlled();
-}
-
-void UTemporalBufferComponent::RecordSnapshot()
-{
-	const AActor* OwnerActor = GetOwner();
-
-	FTemporalSnapshot Snapshot;
-	Snapshot.Timestamp = GetWorld()->GetTimeSeconds();
-	Snapshot.Transform = OwnerActor->GetActorTransform();
-	Snapshot.Velocity = OwnerActor->GetVelocity();
-	Snapshot.Health = CachedASC ? CachedASC->GetNumericAttribute(UChronoAttributeSet::GetHealthAttribute()) : 0.f;
-
-	WriteSnapshot(Snapshot);	
 }
 
 void UTemporalBufferComponent::WriteSnapshot(const FTemporalSnapshot& Snapshot)
